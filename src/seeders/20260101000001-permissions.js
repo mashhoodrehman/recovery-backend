@@ -1,6 +1,7 @@
 'use strict';
 
 const PERMISSIONS = [
+  { group: 'dashboard', items: ['dashboard.view'] },
   { group: 'users', items: ['users.view', 'users.create', 'users.update', 'users.delete'] },
   { group: 'roles', items: ['roles.view', 'roles.create', 'roles.update', 'roles.delete'] },
   {
@@ -21,6 +22,36 @@ const PERMISSIONS = [
       'recovery.assign',
       'recovery.complete',
     ],
+  },
+  {
+    group: 'vehicles',
+    items: [
+      'vehicles.view.own',
+      'vehicles.create',
+      'vehicles.update',
+      'vehicles.delete',
+      'vehicles.manage.any',
+    ],
+  },
+  {
+    group: 'wallets',
+    items: ['wallets.view.own', 'wallets.view.any', 'wallets.adjust'],
+  },
+  {
+    group: 'withdrawals',
+    items: ['withdrawals.view.own', 'withdrawals.create', 'withdrawals.manage'],
+  },
+  {
+    group: 'notifications',
+    items: ['notifications.send', 'notifications.manage'],
+  },
+  {
+    group: 'settings',
+    items: ['settings.view', 'settings.update'],
+  },
+  {
+    group: 'audit',
+    items: ['audit.view'],
   },
 ];
 

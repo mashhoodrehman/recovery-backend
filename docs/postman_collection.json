@@ -1,0 +1,294 @@
+{
+  "info": {
+    "name": "Recovery Marketplace API",
+    "description": "Towing / vehicle recovery / roadside assistance marketplace. All responses follow { success, message, data, meta? }. Set {{baseUrl}} and login to populate {{accessToken}}.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000/api/v1" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const d = pm.response.json().data || {};",
+                  "if (d.accessToken) pm.collectionVariables.set('accessToken', d.accessToken);",
+                  "if (d.refreshToken) pm.collectionVariables.set('refreshToken', d.refreshToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@recovery.local\",\n  \"password\": \"Admin@12345\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Signup",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/signup",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Doe\",\n  \"email\": \"jane@example.com\",\n  \"password\": \"Passw0rd!\",\n  \"role\": \"customer\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Refresh",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/refresh",
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" }
+          }
+        },
+        { "name": "Me", "request": { "method": "GET", "url": "{{baseUrl}}/auth/me" } },
+        { "name": "Logout", "request": { "method": "POST", "url": "{{baseUrl}}/auth/logout" } },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/forgot-password",
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"jane@example.com\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        { "name": "Stats", "request": { "method": "GET", "url": "{{baseUrl}}/dashboard/stats" } },
+        { "name": "Charts", "request": { "method": "GET", "url": "{{baseUrl}}/dashboard/charts" } }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        { "name": "List", "request": { "method": "GET", "url": "{{baseUrl}}/users?page=1&limit=20" } },
+        { "name": "Get", "request": { "method": "GET", "url": "{{baseUrl}}/users/1" } },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/users",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"New\",\n  \"lastName\": \"User\",\n  \"email\": \"new@example.com\",\n  \"password\": \"Passw0rd!\",\n  \"roles\": [\"recovery-provider\"]\n}"
+            }
+          }
+        },
+        {
+          "name": "Update",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/users/2",
+            "body": { "mode": "raw", "raw": "{\n  \"isActive\": true\n}" }
+          }
+        },
+        { "name": "Delete", "request": { "method": "DELETE", "url": "{{baseUrl}}/users/2" } }
+      ]
+    },
+    {
+      "name": "Roles & Permissions",
+      "item": [
+        { "name": "List Roles", "request": { "method": "GET", "url": "{{baseUrl}}/roles" } },
+        {
+          "name": "Create Role",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/roles",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"finance-manager\",\n  \"description\": \"Finance\",\n  \"permissions\": [\"withdrawals.manage\", \"wallets.view.any\"]\n}"
+            }
+          }
+        },
+        { "name": "List Permissions", "request": { "method": "GET", "url": "{{baseUrl}}/permissions" } },
+        { "name": "Permission Groups", "request": { "method": "GET", "url": "{{baseUrl}}/permissions/groups/all" } }
+      ]
+    },
+    {
+      "name": "Recovery Requests & Bidding",
+      "item": [
+        { "name": "List Requests", "request": { "method": "GET", "url": "{{baseUrl}}/recovery/requests?page=1&limit=20" } },
+        { "name": "Get Request", "request": { "method": "GET", "url": "{{baseUrl}}/recovery/requests/1" } },
+        {
+          "name": "Create Request",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/recovery/requests",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleType\": \"sedan\",\n  \"vehiclePlate\": \"ABC-123\",\n  \"issueDescription\": \"Flat tire on highway\",\n  \"pickupAddress\": \"123 Main St\",\n  \"pickupLat\": 25.2048,\n  \"pickupLng\": 55.2708\n}"
+            }
+          }
+        },
+        {
+          "name": "Place Bid",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/recovery/requests/1/bids",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 120.00,\n  \"currency\": \"USD\",\n  \"etaMinutes\": 30,\n  \"note\": \"On my way\"\n}"
+            }
+          }
+        },
+        { "name": "Accept Bid", "request": { "method": "POST", "url": "{{baseUrl}}/recovery/requests/1/bids/1/accept" } },
+        { "name": "Withdraw Bid", "request": { "method": "POST", "url": "{{baseUrl}}/recovery/requests/1/bids/1/withdraw" } },
+        { "name": "Start (in progress)", "request": { "method": "POST", "url": "{{baseUrl}}/recovery/requests/1/start" } },
+        { "name": "Complete", "request": { "method": "POST", "url": "{{baseUrl}}/recovery/requests/1/complete" } },
+        { "name": "Cancel", "request": { "method": "POST", "url": "{{baseUrl}}/recovery/requests/1/cancel" } }
+      ]
+    },
+    {
+      "name": "Vehicles",
+      "item": [
+        { "name": "List", "request": { "method": "GET", "url": "{{baseUrl}}/vehicles?page=1&limit=20" } },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/vehicles",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleType\": \"tow_truck\",\n  \"plateNumber\": \"TOW-9001\",\n  \"model\": \"Ford F-550\",\n  \"year\": 2022,\n  \"towingCapacity\": 8\n}"
+            }
+          }
+        },
+        {
+          "name": "Update",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/vehicles/1",
+            "body": { "mode": "raw", "raw": "{\n  \"availability\": \"busy\"\n}" }
+          }
+        },
+        { "name": "Delete", "request": { "method": "DELETE", "url": "{{baseUrl}}/vehicles/1" } }
+      ]
+    },
+    {
+      "name": "Wallet",
+      "item": [
+        { "name": "My Wallet", "request": { "method": "GET", "url": "{{baseUrl}}/wallets/me" } },
+        { "name": "Transactions", "request": { "method": "GET", "url": "{{baseUrl}}/wallets/transactions?page=1&limit=20" } },
+        {
+          "name": "Adjust (admin)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/wallets/adjust",
+            "body": { "mode": "raw", "raw": "{\n  \"userId\": 2,\n  \"amount\": 50,\n  \"note\": \"Goodwill credit\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Withdrawals",
+      "item": [
+        { "name": "List", "request": { "method": "GET", "url": "{{baseUrl}}/withdrawals?page=1&limit=20" } },
+        {
+          "name": "Request Withdrawal",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/withdrawals",
+            "body": { "mode": "raw", "raw": "{\n  \"amount\": 150,\n  \"method\": \"bank_transfer\",\n  \"payoutDetails\": { \"iban\": \"XX00...\" }\n}" }
+          }
+        },
+        { "name": "Approve", "request": { "method": "POST", "url": "{{baseUrl}}/withdrawals/1/approve" } },
+        { "name": "Mark Paid", "request": { "method": "POST", "url": "{{baseUrl}}/withdrawals/1/paid" } },
+        {
+          "name": "Reject",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/withdrawals/1/reject",
+            "body": { "mode": "raw", "raw": "{\n  \"adminNote\": \"Invalid bank details\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        { "name": "List (mine)", "request": { "method": "GET", "url": "{{baseUrl}}/notifications?page=1&limit=20" } },
+        { "name": "Mark All Read", "request": { "method": "POST", "url": "{{baseUrl}}/notifications/read-all" } },
+        { "name": "Mark Read", "request": { "method": "POST", "url": "{{baseUrl}}/notifications/1/read" } },
+        {
+          "name": "Register Device Token",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/notifications/register-token",
+            "body": { "mode": "raw", "raw": "{\n  \"fcmToken\": \"device-fcm-token\"\n}" }
+          }
+        },
+        {
+          "name": "Send / Broadcast (admin)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/notifications/send",
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Maintenance\",\n  \"body\": \"Scheduled downtime tonight\",\n  \"broadcast\": true\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Settings",
+      "item": [
+        { "name": "Public Settings", "request": { "method": "GET", "url": "{{baseUrl}}/settings/public", "auth": { "type": "noauth" } } },
+        { "name": "List (admin)", "request": { "method": "GET", "url": "{{baseUrl}}/settings" } },
+        {
+          "name": "Update (admin)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/settings",
+            "body": { "mode": "raw", "raw": "{\n  \"settings\": [\n    { \"key\": \"commission_percent\", \"value\": 12 },\n    { \"key\": \"min_withdrawal_amount\", \"value\": 100 }\n  ]\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Audit Logs",
+      "item": [
+        { "name": "List", "request": { "method": "GET", "url": "{{baseUrl}}/audit-logs?page=1&limit=30" } }
+      ]
+    },
+    {
+      "name": "Health",
+      "item": [{ "name": "Health", "request": { "method": "GET", "url": "{{baseUrl}}/health", "auth": { "type": "noauth" } } }]
+    }
+  ]
+}

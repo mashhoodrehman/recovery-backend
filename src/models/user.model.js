@@ -17,6 +17,7 @@ module.exports = (sequelize, DataTypes) => {
       isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
       lastLoginAt: { type: DataTypes.DATE, allowNull: true },
       refreshTokenHash: { type: DataTypes.STRING(255), allowNull: true },
+      fcmToken: { type: DataTypes.STRING(512), allowNull: true },
     },
     {
       tableName: 'users',

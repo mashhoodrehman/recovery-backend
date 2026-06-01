@@ -8,7 +8,9 @@ const env = require('./config/env');
 const logger = require('./utils/logger');
 const routes = require('./routes');
 const { requestContext } = require('./middlewares/requestContext.middleware');
+const { auditLogger } = require('./middlewares/audit.middleware');
 const { notFoundHandler, errorHandler } = require('./middlewares/error.middleware');
+const { swaggerUi, swaggerSpec } = require('./docs/swagger');
 
 const app = express();
 
@@ -37,6 +39,11 @@ app.use(
   })
 );
 
+// API documentation (Swagger UI)
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.get('/api/docs.json', (_req, res) => res.json(swaggerSpec));
+
+app.use(auditLogger);
 app.use('/api/v1', routes);
 
 app.use(notFoundHandler);

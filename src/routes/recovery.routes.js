@@ -33,6 +33,12 @@ router.post(
   ctrl.cancelRequest
 );
 router.post(
+  '/requests/:id/start',
+  hasPermission('recovery.complete', 'recovery.assign', 'recovery.bid.create'),
+  validate(v.idParam),
+  ctrl.startRequest
+);
+router.post(
   '/requests/:id/complete',
   hasPermission('recovery.complete'),
   validate(v.idParam),
