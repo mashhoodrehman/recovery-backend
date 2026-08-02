@@ -1,0 +1,870 @@
+{
+  "info": {
+    "name": "Recovery — Full API (Production) v2",
+    "description": "Complete, numbered API collection for the Recovery Marketplace — admin panel + Flutter mobile app, including push notifications, Stripe ride payments, ratings, vendor commission/Stripe Connect payouts, and Agora voice calls.\n\n**Base URL:** https://api.recovernow.co.uk/api/v1\n\n**Admin flow:** Admin — Auth → 1. Login → adminToken auto-saved → use any Admin folder.\n\n**Mobile flow:** Mobile — OTP Auth & Profile → 1. Send OTP → 2. Verify OTP (accessToken auto-saved) → 3/4. Setup Profile → then Tower or Customer folders in order.\n\nEvery folder is numbered start-to-finish so you can run it top to bottom without missing a step. Folders with a WebSocket component note the relevant socket.io events in their description — those aren't REST-callable from Postman, see docs/FLUTTER_INTEGRATION_GUIDE.md and docs/MOBILE_API.md for the full event reference.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://api.recovernow.co.uk/api/v1", "type": "string" },
+    { "key": "accessToken", "value": "", "type": "string" },
+    { "key": "adminToken", "value": "", "type": "string" },
+    { "key": "refreshToken", "value": "", "type": "string" },
+    { "key": "phone", "value": "+923001234567", "type": "string" },
+    { "key": "otp", "value": "1122", "type": "string" },
+    { "key": "resetToken", "value": "", "type": "string" },
+    { "key": "userId", "value": "1", "type": "string" },
+    { "key": "roleId", "value": "1", "type": "string" },
+    { "key": "permissionId", "value": "1", "type": "string" },
+    { "key": "companyId", "value": "1", "type": "string" },
+    { "key": "vehicleId", "value": "1", "type": "string" },
+    { "key": "requestId", "value": "1", "type": "string", "description": "Legacy Admin recovery-request id (/recovery/requests)" },
+    { "key": "requestBidId", "value": "1", "type": "string" },
+    { "key": "withdrawalId", "value": "1", "type": "string" },
+    { "key": "notificationId", "value": "1", "type": "string" },
+    { "key": "rideId", "value": "1", "type": "string", "description": "Mobile ride id (/mobile/rides)" },
+    { "key": "bidId", "value": "1", "type": "string", "description": "Mobile ride bid id" },
+    { "key": "paymentIntentId", "value": "", "type": "string" },
+    { "key": "callToken", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "1. Admin — Auth",
+      "item": [
+        {
+          "name": "1. Login (super admin)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const d = pm.response.json().data || {};",
+            "if (d.accessToken) { pm.collectionVariables.set('accessToken', d.accessToken); pm.collectionVariables.set('adminToken', d.accessToken); console.log('Admin token saved'); }",
+            "if (d.refreshToken) pm.collectionVariables.set('refreshToken', d.refreshToken);"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/login",
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@recovery.local\",\n  \"password\": \"Admin@12345\"\n}" }
+          }
+        },
+        {
+          "name": "2. Signup",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/signup",
+            "body": { "mode": "raw", "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"email\": \"john@example.com\",\n  \"password\": \"Pass@1234\",\n  \"phone\": \"+923001111111\",\n  \"role\": \"customer\"\n}" },
+            "description": "role must be 'customer' or 'recovery-provider' (defaults to customer)."
+          }
+        },
+        {
+          "name": "3. Refresh Token",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const d = pm.response.json().data || {};",
+            "if (d.accessToken) pm.collectionVariables.set('accessToken', d.accessToken);",
+            "if (d.refreshToken) pm.collectionVariables.set('refreshToken', d.refreshToken);"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/refresh",
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" }
+          }
+        },
+        {
+          "name": "4. Get Me",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/auth/me"
+          }
+        },
+        {
+          "name": "5. Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/forgot-password",
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@recovery.local\"\n}" },
+            "description": "Emails a reset token/link (mailer.service.js) — grab the token from the email or server logs in dev."
+          }
+        },
+        {
+          "name": "6. Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/reset-password",
+            "body": { "mode": "raw", "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"password\": \"NewPass@1234\"\n}" }
+          }
+        },
+        {
+          "name": "7. Logout",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/auth/logout"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Admin — Users",
+      "item": [
+        {
+          "name": "1. List Users",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/users?page=1&limit=20&search=", "host": ["{{baseUrl}}"], "path": ["users"],
+              "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }, { "key": "search", "value": "" }] }
+          }
+        },
+        {
+          "name": "2. Get User",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/users/{{userId}}" }
+        },
+        {
+          "name": "3. Create User",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const d = pm.response.json().data || {}; if (d.id) pm.collectionVariables.set('userId', String(d.id));"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": "{{baseUrl}}/users",
+            "body": { "mode": "raw", "raw": "{\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Smith\",\n  \"email\": \"jane@example.com\",\n  \"password\": \"Pass@1234\",\n  \"phone\": \"+923002222222\",\n  \"isActive\": true,\n  \"roleIds\": []\n}" }
+          }
+        },
+        {
+          "name": "4. Update User",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": "{{baseUrl}}/users/{{userId}}",
+            "body": { "mode": "raw", "raw": "{\n  \"firstName\": \"Jane Updated\"\n}" }
+          }
+        },
+        {
+          "name": "5. Delete User",
+          "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/users/{{userId}}" }
+        }
+      ]
+    },
+    {
+      "name": "3. Admin — Roles & Permissions",
+      "item": [
+        {
+          "name": "1. List Roles",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/roles" }
+        },
+        {
+          "name": "2. Get Role",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/roles/{{roleId}}" }
+        },
+        {
+          "name": "3. Create Role",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const d = pm.response.json().data || {}; if (d.id) pm.collectionVariables.set('roleId', String(d.id));"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": "{{baseUrl}}/roles",
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"dispatcher\",\n  \"description\": \"Can view and manage rides\",\n  \"permissionIds\": []\n}" }
+          }
+        },
+        {
+          "name": "4. Update Role",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": "{{baseUrl}}/roles/{{roleId}}",
+            "body": { "mode": "raw", "raw": "{\n  \"description\": \"Updated description\"\n}" }
+          }
+        },
+        {
+          "name": "5. Delete Role",
+          "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/roles/{{roleId}}" }
+        },
+        {
+          "name": "6. List Permissions",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/permissions" }
+        },
+        {
+          "name": "7. List Permission Groups",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/permissions/groups/all" }
+        },
+        {
+          "name": "8. Create Permission",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const d = pm.response.json().data || {}; if (d.id) pm.collectionVariables.set('permissionId', String(d.id));"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": "{{baseUrl}}/permissions",
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"rides.manage\",\n  \"group\": \"rides\",\n  \"description\": \"Manage rides\"\n}" }
+          }
+        },
+        {
+          "name": "9. Update Permission",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": "{{baseUrl}}/permissions/{{permissionId}}",
+            "body": { "mode": "raw", "raw": "{\n  \"description\": \"Updated description\"\n}" }
+          }
+        },
+        {
+          "name": "10. Delete Permission",
+          "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/permissions/{{permissionId}}" }
+        }
+      ]
+    },
+    {
+      "name": "4. Admin — Companies",
+      "item": [
+        {
+          "name": "1. List Companies",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/companies?page=1&limit=20", "host": ["{{baseUrl}}"], "path": ["companies"],
+              "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }, { "key": "search", "value": "", "disabled": true }, { "key": "status", "value": "", "disabled": true }] } }
+        },
+        {
+          "name": "2. Get Company",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/companies/{{companyId}}" }
+        },
+        {
+          "name": "3. Create Company",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const d = pm.response.json().data || {}; if (d.id) pm.collectionVariables.set('companyId', String(d.id));"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": "{{baseUrl}}/companies",
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"TowPro Ltd\",\n  \"email\": \"info@towpro.com\",\n  \"phone\": \"+923009876543\",\n  \"registrationNumber\": \"REG-001\",\n  \"website\": \"https://towpro.com\",\n  \"address\": \"123 Recovery Lane\",\n  \"city\": \"Lahore\",\n  \"country\": \"Pakistan\",\n  \"status\": \"active\"\n}" }
+          }
+        },
+        {
+          "name": "4. Update Company",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": "{{baseUrl}}/companies/{{companyId}}",
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"inactive\"\n}" }
+          }
+        },
+        {
+          "name": "5. Delete Company",
+          "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/companies/{{companyId}}" }
+        }
+      ]
+    },
+    {
+      "name": "5. Admin — Vehicles",
+      "item": [
+        {
+          "name": "1. List Vehicles",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/vehicles" }
+        },
+        {
+          "name": "2. Get Vehicle",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/vehicles/{{vehicleId}}" }
+        },
+        {
+          "name": "3. Create Vehicle",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const d = pm.response.json().data || {}; if (d.id) pm.collectionVariables.set('vehicleId', String(d.id));"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": "{{baseUrl}}/vehicles",
+            "body": { "mode": "raw", "raw": "{\n  \"vehicleType\": \"tow_truck\",\n  \"plateNumber\": \"LHR-1234\",\n  \"ownerId\": {{userId}},\n  \"model\": \"Hino 300\",\n  \"year\": 2020,\n  \"capacity\": 3.5,\n  \"towingCapacity\": 5\n}" }
+          }
+        },
+        {
+          "name": "4. Update Vehicle",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": "{{baseUrl}}/vehicles/{{vehicleId}}",
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"active\",\n  \"availability\": \"available\"\n}" }
+          }
+        },
+        {
+          "name": "5. Delete Vehicle",
+          "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/vehicles/{{vehicleId}}" }
+        }
+      ]
+    },
+    {
+      "name": "6. Admin — Recovery Requests (legacy web flow)",
+      "description": "The original web-based recovery-request/bidding flow, separate from the Flutter app's Ride flow under Mobile — Customer Ride Flow. Both share the wallet/commission system.",
+      "item": [
+        {
+          "name": "1. Create Request",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const d = pm.response.json().data || {}; if (d.id) pm.collectionVariables.set('requestId', String(d.id));"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/recovery/requests",
+            "body": { "mode": "raw", "raw": "{\n  \"vehicleType\": \"sedan\",\n  \"vehiclePlate\": \"LHR-1234\",\n  \"issueDescription\": \"Car won't start — flat battery\",\n  \"pickupAddress\": \"Gulberg III, Lahore\",\n  \"pickupLat\": 31.5204,\n  \"pickupLng\": 74.3587,\n  \"dropoffAddress\": \"DHA Phase 5, Lahore\",\n  \"dropoffLat\": 31.4890,\n  \"dropoffLng\": 74.3748\n}" }
+          }
+        },
+        {
+          "name": "2. List Requests",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/recovery/requests?page=1&limit=20&scope=all", "host": ["{{baseUrl}}"], "path": ["recovery", "requests"],
+              "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }, { "key": "scope", "value": "all" }, { "key": "status", "value": "", "disabled": true }] } }
+        },
+        {
+          "name": "3. Get Request",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/recovery/requests/{{requestId}}" }
+        },
+        {
+          "name": "4. Cancel Request",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/recovery/requests/{{requestId}}/cancel" }
+        },
+        {
+          "name": "5. Place Bid",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const d = pm.response.json().data || {}; if (d.id) pm.collectionVariables.set('requestBidId', String(d.id));"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/recovery/requests/{{requestId}}/bids",
+            "body": { "mode": "raw", "raw": "{\n  \"amount\": 2000,\n  \"currency\": \"USD\",\n  \"etaMinutes\": 15,\n  \"note\": \"On my way\"\n}" }
+          }
+        },
+        {
+          "name": "6. Accept Bid",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/recovery/requests/{{requestId}}/bids/{{requestBidId}}/accept" }
+        },
+        {
+          "name": "7. Withdraw Bid",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/recovery/requests/{{requestId}}/bids/{{requestBidId}}/withdraw" }
+        },
+        {
+          "name": "8. Start Request",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/recovery/requests/{{requestId}}/start" }
+        },
+        {
+          "name": "9. Complete Request",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/recovery/requests/{{requestId}}/complete" }
+        }
+      ]
+    },
+    {
+      "name": "7. Admin — Wallets & Withdrawals",
+      "item": [
+        {
+          "name": "1. My Wallet",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/wallets/me" }
+        },
+        {
+          "name": "2. Get Wallet by User Id",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/wallets/{{userId}}" }
+        },
+        {
+          "name": "3. Wallet Transactions",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/wallets/transactions?page=1&limit=20", "host": ["{{baseUrl}}"], "path": ["wallets", "transactions"],
+              "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }, { "key": "type", "value": "", "disabled": true }, { "key": "userId", "value": "", "disabled": true }] } }
+        },
+        {
+          "name": "4. Adjust Wallet (admin credit/debit)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": "{{baseUrl}}/wallets/adjust",
+            "body": { "mode": "raw", "raw": "{\n  \"userId\": {{userId}},\n  \"amount\": 50,\n  \"note\": \"Manual goodwill credit\"\n}" },
+            "description": "amount can be negative to debit. Not the normal earnings path — ride completion credits automatically."
+          }
+        },
+        {
+          "name": "5. List Withdrawals",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/withdrawals?page=1&limit=10&scope=mine", "host": ["{{baseUrl}}"], "path": ["withdrawals"],
+              "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "10" }, { "key": "scope", "value": "mine" }, { "key": "status", "value": "", "disabled": true }] } }
+        },
+        {
+          "name": "6. Get Withdrawal",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/withdrawals/{{withdrawalId}}" }
+        },
+        {
+          "name": "7. Request Withdrawal (vendor)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const d = pm.response.json().data || {}; if (d.id) pm.collectionVariables.set('withdrawalId', String(d.id));"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/withdrawals",
+            "body": { "mode": "raw", "raw": "{\n  \"amount\": 100,\n  \"method\": \"stripe\",\n  \"payoutDetails\": null\n}" },
+            "description": "method: bank_transfer | paypal | stripe. Blocked if amount < settings.min_withdrawal_amount or wallet balance insufficient."
+          }
+        },
+        {
+          "name": "8. Approve Withdrawal (admin)",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/withdrawals/{{withdrawalId}}/approve" }
+        },
+        {
+          "name": "9. Mark Withdrawal Paid (admin — fires real Stripe transfer for method=stripe)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": "{{baseUrl}}/withdrawals/{{withdrawalId}}/paid",
+            "description": "This is the point money actually leaves the platform's Stripe balance to the vendor's Connect account. 400s if the vendor hasn't finished Stripe Connect onboarding — see Mobile — Vendor Payouts."
+          }
+        },
+        {
+          "name": "10. Reject Withdrawal (admin)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": "{{baseUrl}}/withdrawals/{{withdrawalId}}/reject",
+            "body": { "mode": "raw", "raw": "{\n  \"adminNote\": \"Insufficient verification\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Admin — Notifications",
+      "item": [
+        {
+          "name": "1. List Notifications",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/notifications?page=1&limit=20", "host": ["{{baseUrl}}"], "path": ["notifications"],
+              "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }, { "key": "unread", "value": "", "disabled": true }] } }
+        },
+        {
+          "name": "2. Mark Notification Read",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/notifications/{{notificationId}}/read" }
+        },
+        {
+          "name": "3. Mark All Read",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/notifications/read-all" }
+        },
+        {
+          "name": "4. Register Device Token (FCM)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/notifications/register-token",
+            "body": { "mode": "raw", "raw": "{\n  \"fcmToken\": \"<device-fcm-token>\"\n}" },
+            "description": "Dedicated endpoint for FCM token registration — call on login/app-start/token-refresh. PATCH /mobile/profile also accepts fcmToken as an alternative (see Mobile — OTP Auth & Profile)."
+          }
+        },
+        {
+          "name": "5. Send Notification (admin broadcast/targeted)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": "{{baseUrl}}/notifications/send",
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Scheduled maintenance\",\n  \"body\": \"The app will be briefly unavailable tonight at 2am.\",\n  \"type\": \"system\",\n  \"broadcast\": true\n}" },
+            "description": "Use \"userIds\": [1,2,3] instead of broadcast:true to target specific users."
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. Admin — Settings",
+      "item": [
+        {
+          "name": "1. Get Settings (grouped, admin)",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/settings" }
+        },
+        {
+          "name": "2. Get Public Settings",
+          "request": { "method": "GET", "url": "{{baseUrl}}/settings/public" }
+        },
+        {
+          "name": "3. Update Settings (commission %, min payout, etc)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": "{{baseUrl}}/settings",
+            "body": { "mode": "raw", "raw": "{\n  \"settings\": [\n    { \"key\": \"commission_percent\", \"value\": 15 },\n    { \"key\": \"min_withdrawal_amount\", \"value\": 50 },\n    { \"key\": \"currency\", \"value\": \"USD\" }\n  ]\n}" },
+            "description": "This is where the admin panel sets the vendor commission % and minimum payout limit. Body is a bulk key/value upsert against the generic Setting model — any key works, not just these three."
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Admin — Dashboard & Audit",
+      "item": [
+        {
+          "name": "1. Dashboard Stats",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/dashboard/stats" }
+        },
+        {
+          "name": "2. Dashboard Charts",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/dashboard/charts" }
+        },
+        {
+          "name": "3. Audit Logs",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/audit-logs" }
+        }
+      ]
+    },
+    {
+      "name": "11. Mobile — OTP Auth & Profile",
+      "description": "OTP is always 1122 in dev/staging. Run in order: 1 → 2 (token auto-saved) → 3 or 4 → 5.",
+      "item": [
+        {
+          "name": "1. Send OTP",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('OTP sent', () => pm.response.to.have.status(200));",
+            "const d = pm.response.json();",
+            "if (d.data && d.data.otp) { pm.collectionVariables.set('otp', d.data.otp); console.log('DEV OTP:', d.data.otp); }"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/mobile/send",
+            "body": { "mode": "raw", "raw": "{\n  \"phone\": \"{{phone}}\"\n}" }
+          }
+        },
+        {
+          "name": "2. Verify OTP",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('OTP verified', () => pm.response.to.have.status(200));",
+            "const d = pm.response.json();",
+            "if (d.data) { pm.collectionVariables.set('accessToken', d.data.accessToken); pm.collectionVariables.set('refreshToken', d.data.refreshToken); console.log('isNewUser:', d.data.isNewUser); }"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/mobile/verify",
+            "body": { "mode": "raw", "raw": "{\n  \"phone\": \"{{phone}}\",\n  \"otp\": \"{{otp}}\"\n}" }
+          }
+        },
+        {
+          "name": "3. Setup Profile — Customer",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/mobile/profile/setup",
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"AliCustomer\",\n  \"userType\": \"customer\",\n  \"city\": \"Lahore\"\n}" }
+          }
+        },
+        {
+          "name": "4. Setup Profile — Tower (tow truck driver)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/mobile/profile/setup",
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"KarimTower\",\n  \"userType\": \"tower\",\n  \"city\": \"Lahore\"\n}" }
+          }
+        },
+        {
+          "name": "5. Get My Profile",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/mobile/profile" }
+        },
+        {
+          "name": "6. Update Profile (city/country/avatar/fcmToken)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/mobile/profile",
+            "body": { "mode": "formdata", "formdata": [
+              { "key": "city", "value": "Lahore", "type": "text", "disabled": true },
+              { "key": "country", "value": "UK", "type": "text", "disabled": true },
+              { "key": "fcmToken", "value": "<device-fcm-token>", "type": "text" },
+              { "key": "avatar", "type": "file", "disabled": true }
+            ] },
+            "description": "Multipart so avatar can be attached. fcmToken here is equivalent to Admin — Notifications > Register Device Token."
+          }
+        },
+        {
+          "name": "7. Switch Role (customer <-> tower)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/mobile/profile/switch-role",
+            "body": { "mode": "raw", "raw": "{\n  \"userType\": \"tower\"\n}" },
+            "description": "Blocked with 409 if currently an online tower. Switching to tower returns the required-documents checklist — see Mobile — Tower Documents."
+          }
+        }
+      ]
+    },
+    {
+      "name": "12. Mobile — Tower Documents (KYC)",
+      "item": [
+        {
+          "name": "1. Get Required Documents Checklist",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/mobile/profile/tower/documents" }
+        },
+        {
+          "name": "2. Upload Document",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/mobile/profile/tower/documents",
+            "body": { "mode": "formdata", "formdata": [
+              { "key": "docType", "value": "driving_license", "type": "text" },
+              { "key": "document", "type": "file" }
+            ] }
+          }
+        },
+        {
+          "name": "3. (Admin) Review Document",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": "{{baseUrl}}/mobile/profile/admin/tower-documents/1",
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"approved\"\n}" },
+            "description": "status: approved | rejected. Include rejectionReason when rejecting."
+          }
+        }
+      ]
+    },
+    {
+      "name": "13. Mobile — Tower Presence & Ride Lifecycle",
+      "description": "Primary channel for online/location/new-ride-request is WebSocket (tower:online, tower:location_update, ride:new_request). These REST endpoints are fallbacks. tower:online and tower:location_update should include ts (client timestamp, ms) — the server drops any update older than the last one it applied, which is what prevents the live position from flickering forward then snapping back. Run in order once a ride exists: 5 (bid) → after customer accepts → 6 (arrived) → 7 (start, blocked until payment is 'paid') → 8 (complete, credits wallet).",
+      "item": [
+        {
+          "name": "1. Go Online",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/mobile/tower/online",
+            "body": { "mode": "raw", "raw": "{\n  \"lat\": 31.5204,\n  \"lng\": 74.3587,\n  \"ts\": 1774598400000\n}" }
+          }
+        },
+        {
+          "name": "2. Go Offline",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/mobile/tower/offline" }
+        },
+        {
+          "name": "3. Update Location (REST fallback)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/mobile/tower/location",
+            "body": { "mode": "raw", "raw": "{\n  \"lat\": 31.5210,\n  \"lng\": 74.3592,\n  \"ts\": 1774598405000\n}" }
+          }
+        },
+        {
+          "name": "4. Get Nearby Towers",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/mobile/tower/nearby?lat=31.5204&lng=74.3587&radius=10", "host": ["{{baseUrl}}"], "path": ["mobile", "tower", "nearby"],
+              "query": [{ "key": "lat", "value": "31.5204" }, { "key": "lng", "value": "74.3587" }, { "key": "radius", "value": "10" }] } }
+        },
+        {
+          "name": "5. Place Bid on Ride",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const d = pm.response.json().data || {}; if (d.id) { pm.collectionVariables.set('bidId', String(d.id)); console.log('Bid ID saved:', d.id); }"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/mobile/rides/{{rideId}}/bids",
+            "body": { "mode": "raw", "raw": "{\n  \"amount\": 1500,\n  \"etaMinutes\": 10,\n  \"note\": \"3 km away, flatbed truck\"\n}" }
+          }
+        },
+        {
+          "name": "6. Mark Arrived at Pickup",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/mobile/rides/{{rideId}}/arrived" }
+        },
+        {
+          "name": "7. Start Ride (blocked until payment confirmed)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/mobile/rides/{{rideId}}/start",
+            "description": "Returns 400 'Customer has not completed payment for this ride yet' until Mobile — Ride Payment's PaymentIntent has succeeded (webhook-confirmed)."
+          }
+        },
+        {
+          "name": "8. Complete Ride (credits vendor wallet)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/mobile/rides/{{rideId}}/complete",
+            "description": "fare minus commission_percent (Admin — Settings) is credited to the tower's wallet automatically here."
+          }
+        }
+      ]
+    },
+    {
+      "name": "14. Mobile — Customer Ride Flow",
+      "description": "Create → wait for bids (WebSocket ride:new_bid) → accept → pay (see Mobile — Ride Payment) → track (WebSocket ride:tower_location) → rate after completion. On reconnect (or first connect while a ride is active), the server auto-emits a ride:resync event with the latest ride snapshot — see docs/MOBILE_API.md.",
+      "item": [
+        {
+          "name": "1. Create Ride Request",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Ride created', () => pm.response.to.have.status(201));",
+            "const d = pm.response.json().data || {};",
+            "if (d.id) { pm.collectionVariables.set('rideId', String(d.id)); console.log('Ride ID saved:', d.id, '| Status:', d.status); }"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/mobile/rides",
+            "body": { "mode": "raw", "raw": "{\n  \"fromAddress\": \"Gulberg III, Lahore\",\n  \"fromLat\": 31.5204,\n  \"fromLng\": 74.3587,\n  \"toAddress\": \"DHA Phase 5, Lahore\",\n  \"toLat\": 31.4890,\n  \"toLng\": 74.3748,\n  \"customerNote\": \"Car broke down, engine won't start\"\n}" }
+          }
+        },
+        {
+          "name": "2. Get Ride Details",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/mobile/rides/{{rideId}}" }
+        },
+        {
+          "name": "3. List My Rides",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/mobile/rides?page=1&limit=20", "host": ["{{baseUrl}}"], "path": ["mobile", "rides"],
+              "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }, { "key": "status", "value": "", "disabled": true }] } }
+        },
+        {
+          "name": "4. Accept Bid",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/mobile/rides/{{rideId}}/bids/{{bidId}}/accept" }
+        },
+        {
+          "name": "5. Reject Bid",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/mobile/rides/{{rideId}}/bids/{{bidId}}/reject" }
+        },
+        {
+          "name": "6. Cancel Ride",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/mobile/rides/{{rideId}}/cancel",
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Changed my mind\"\n}" }
+          }
+        },
+        {
+          "name": "7. Get GPS Trail",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/mobile/rides/{{rideId}}/tracking" }
+        }
+      ]
+    },
+    {
+      "name": "15. Mobile — Chat",
+      "description": "Live messaging is via WebSocket (chat:send, chat:send_image, chat:typing, chat:read -> chat:message/chat:read_ack). If the recipient has no live socket connection, a push notification now fires automatically. Only available once a ride is accepted (not during searching/bidding).",
+      "item": [
+        {
+          "name": "1. Get Ride Messages",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/mobile/rides/{{rideId}}/messages?page=1&limit=50", "host": ["{{baseUrl}}"], "path": ["mobile", "rides", "{{rideId}}", "messages"],
+              "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "50" }] } }
+        },
+        {
+          "name": "2. Send Image",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/mobile/rides/{{rideId}}/messages/image",
+            "body": { "mode": "formdata", "formdata": [{ "key": "image", "type": "file" }] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "16. Mobile — Ride Payment (Stripe)",
+      "description": "Runs after 'Accept Bid'. Blocks 'Start Ride' until payment_intent.succeeded is confirmed via webhook.",
+      "item": [
+        {
+          "name": "1. Create/Reuse PaymentIntent",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const d = pm.response.json().data || {}; if (d.paymentIntentId) pm.collectionVariables.set('paymentIntentId', d.paymentIntentId);"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/mobile/rides/{{rideId}}/pay",
+            "description": "Customer only. Returns { clientSecret, paymentIntentId, currency } for the Flutter Stripe SDK's PaymentSheet."
+          }
+        },
+        {
+          "name": "2. Poll Payment Status",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/mobile/rides/{{rideId}}/payment" }
+        },
+        {
+          "name": "3. [Reference only] Stripe Webhook",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Stripe-Signature", "value": "t=...,v1=... (generated by Stripe)" }],
+            "url": "{{baseUrl}}/payments/stripe/webhook",
+            "body": { "mode": "raw", "raw": "{ \"type\": \"payment_intent.succeeded\", \"data\": { \"object\": { \"id\": \"{{paymentIntentId}}\" } } }" },
+            "description": "Cannot be called directly with a valid signature from Postman. Test with the Stripe CLI:\nstripe listen --forward-to localhost:4000/api/v1/payments/stripe/webhook\nstripe trigger payment_intent.succeeded"
+          }
+        }
+      ]
+    },
+    {
+      "name": "17. Mobile — Rating",
+      "item": [
+        {
+          "name": "1. Rate Completed Ride",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/mobile/rides/{{rideId}}/rating",
+            "body": { "mode": "raw", "raw": "{\n  \"stars\": 5,\n  \"comment\": \"Fast and professional, highly recommend.\"\n}" },
+            "description": "Customer only, ride must be status=completed, one rating per ride."
+          }
+        },
+        {
+          "name": "2. Get Ride Rating",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/mobile/rides/{{rideId}}/rating" }
+        }
+      ]
+    },
+    {
+      "name": "18. Mobile — Vendor Payouts (Stripe Connect)",
+      "item": [
+        {
+          "name": "1. Start Stripe Connect Onboarding",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/mobile/profile/stripe/onboard?returnUrl=myapp://stripe-return&refreshUrl=myapp://stripe-refresh", "host": ["{{baseUrl}}"], "path": ["mobile", "profile", "stripe", "onboard"],
+              "query": [{ "key": "returnUrl", "value": "myapp://stripe-return" }, { "key": "refreshUrl", "value": "myapp://stripe-refresh" }] },
+            "description": "Tower only. Open the returned url in an in-app webview. Pass your own deep-link query params so the app can catch the redirect."
+          }
+        },
+        {
+          "name": "2. Get Stripe Connect Status",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/mobile/profile/stripe/status" }
+        }
+      ]
+    },
+    {
+      "name": "19. Mobile — Voice Call (Agora)",
+      "description": "Agora carries audio only. Ringing/accept/reject/end is via socket events call:invite -> call:incoming, call:accept/reject -> call:accepted/rejected, call:end -> call:ended (see docs/FLUTTER_INTEGRATION_GUIDE.md). Not REST-callable — only the token fetch below is.",
+      "item": [
+        {
+          "name": "1. Get Agora Call Token",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const d = pm.response.json().data || {}; if (d.token) pm.collectionVariables.set('callToken', d.token);"
+          ] } }],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/mobile/rides/{{rideId}}/call/token",
+            "description": "Either ride participant, once a tower is assigned. Returns { appId, channel, token, uid, expiresAt }. Token expires in 1 hour."
+          }
+        }
+      ]
+    },
+    {
+      "name": "20. Mobile — Admin Live",
+      "description": "Real-time versions of these also stream over WebSocket to clients that emit admin:join (admin:online_towers, admin:tower_location, admin:ride_update).",
+      "item": [
+        {
+          "name": "1. All Active Rides",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/mobile/rides/admin/active" }
+        }
+      ]
+    },
+    {
+      "name": "21. Health",
+      "item": [
+        { "name": "1. Health Check", "request": { "method": "GET", "url": "{{baseUrl}}/health" } }
+      ]
+    }
+  ]
+}

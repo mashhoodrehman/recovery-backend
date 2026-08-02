@@ -1,7 +1,9 @@
+const http = require('http');
 const app = require('./app');
 const env = require('./config/env');
 const logger = require('./utils/logger');
 const db = require('./models');
+const { createSocketServer } = require('./socket');
 
 async function start() {
   try {
@@ -12,8 +14,15 @@ async function start() {
     process.exit(1);
   }
 
-  const server = app.listen(env.port, () => {
+  const server = http.createServer(app);
+
+  // Attach Socket.IO
+  const io = createSocketServer(server, env.frontendUrl);
+  app.set('io', io);
+
+  server.listen(env.port, () => {
     logger.info(`${env.appName} listening on http://localhost:${env.port}`);
+    logger.info(`WebSocket server ready on ws://localhost:${env.port}`);
   });
 
   const shutdown = (signal) => {

@@ -5,6 +5,7 @@ const ApiError = require('../utils/ApiError');
 const walletService = require('../services/wallet.service');
 const settingsService = require('../services/settings.service');
 const notificationService = require('../services/notification.service');
+const stripeService = require('../services/stripe.service');
 const { collectPermissions } = require('../middlewares/permission.middleware');
 
 const include = [
@@ -116,17 +117,38 @@ const approve = asyncHandler(async (req, res) => {
   return ok(res, full, 'Withdrawal approved');
 });
 
-// POST /withdrawals/:id/paid — funds actually sent
+// POST /withdrawals/:id/paid — funds actually sent. For method='stripe' this is the point where
+// real money moves: a Stripe Connect transfer is fired to the vendor's connected account before
+// the wallet's pending balance is released, so a failed transfer never silently marks paid.
 const markPaid = asyncHandler(async (req, res) => {
-  const wd = await db.Withdrawal.findByPk(req.params.id);
+  const wd = await db.Withdrawal.findByPk(req.params.id, {
+    include: [{ model: db.User, as: 'user' }],
+  });
   if (!wd) throw ApiError.notFound('Withdrawal not found');
   if (!['approved', 'pending'].includes(wd.status)) {
     throw ApiError.badRequest(`Cannot mark a ${wd.status} withdrawal as paid`);
   }
 
+  let stripeTransferId = null;
+  if (wd.method === 'stripe') {
+    const vendor = wd.user;
+    if (!vendor?.stripeAccountId || !vendor.stripePayoutsEnabled) {
+      throw ApiError.badRequest('Vendor has not completed Stripe Connect onboarding yet');
+    }
+    // Real external call — done before the DB transaction so a Stripe failure never
+    // leaves the withdrawal in a half-paid state.
+    const transfer = await stripeService.createTransfer({
+      amount: wd.amount,
+      currency: wd.currency,
+      destinationAccountId: vendor.stripeAccountId,
+      metadata: { withdrawalId: String(wd.id) },
+    });
+    stripeTransferId = transfer.id;
+  }
+
   await db.sequelize.transaction(async (t) => {
     await wd.update(
-      { status: 'paid', processedById: req.user.id, processedAt: new Date() },
+      { status: 'paid', processedById: req.user.id, processedAt: new Date(), stripeTransferId },
       { transaction: t }
     );
     // Release the held pending funds (money leaves the platform)
@@ -137,7 +159,7 @@ const markPaid = asyncHandler(async (req, res) => {
       pendingDelta: -Number(wd.amount),
       referenceType: 'withdrawal',
       referenceId: wd.id,
-      note: 'Withdrawal paid out',
+      note: stripeTransferId ? `Paid via Stripe transfer ${stripeTransferId}` : 'Withdrawal paid out',
       transaction: t,
     });
   });

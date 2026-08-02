@@ -1,0 +1,368 @@
+{
+  "info": {
+    "name": "Recovery Mobile API",
+    "description": "Complete mobile API collection for the Recovery Marketplace app.\n\n**Flow:**\n1. Run `Send OTP` → `Verify OTP` (auto-saves token)\n2. Run `Setup Profile` to pick role\n3. Use Tower or Customer flows",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://api.recovernow.co.uk/api/v1", "type": "string" },
+    { "key": "accessToken", "value": "", "type": "string" },
+    { "key": "refreshToken", "value": "", "type": "string" },
+    { "key": "phone", "value": "+923001234567", "type": "string" },
+    { "key": "rideId", "value": "1", "type": "string" },
+    { "key": "bidId", "value": "1", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Auth — Phone OTP",
+      "item": [
+        {
+          "name": "1. Send OTP",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/mobile/send", "host": ["{{baseUrl}}"], "path": ["mobile", "send"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{phone}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('OTP sent', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "if (d.data && d.data.otp) {",
+                  "  pm.collectionVariables.set('otp', d.data.otp);",
+                  "  console.log('DEV OTP:', d.data.otp);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Verify OTP",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/mobile/verify", "host": ["{{baseUrl}}"], "path": ["mobile", "verify"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{phone}}\",\n  \"otp\": \"1122\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('OTP verified', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "if (d.data) {",
+                  "  pm.collectionVariables.set('accessToken', d.data.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', d.data.refreshToken);",
+                  "  console.log('isNewUser:', d.data.isNewUser);",
+                  "  console.log('Token saved ✓');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Setup Profile (customer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/mobile/profile/setup", "host": ["{{baseUrl}}"], "path": ["mobile", "profile", "setup"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"AliCustomer\",\n  \"userType\": \"customer\",\n  \"city\": \"Lahore\"\n}"
+            }
+          }
+        },
+        {
+          "name": "3. Setup Profile (tower)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/mobile/profile/setup", "host": ["{{baseUrl}}"], "path": ["mobile", "profile", "setup"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"KarimTower\",\n  \"userType\": \"tower\",\n  \"city\": \"Lahore\"\n}"
+            }
+          }
+        },
+        {
+          "name": "4. Get My Profile",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/mobile/profile", "host": ["{{baseUrl}}"], "path": ["mobile", "profile"] }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/refresh", "host": ["{{baseUrl}}"], "path": ["auth", "refresh"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const d = pm.response.json();",
+                  "if (d.data && d.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', d.data.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', d.data.refreshToken);",
+                  "  console.log('Token refreshed ✓');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Tower",
+      "item": [
+        {
+          "name": "Go Online",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/mobile/tower/online", "host": ["{{baseUrl}}"], "path": ["mobile", "tower", "online"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lat\": 31.5204,\n  \"lng\": 74.3587\n}"
+            }
+          }
+        },
+        {
+          "name": "Go Offline",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/mobile/tower/offline", "host": ["{{baseUrl}}"], "path": ["mobile", "tower", "offline"] }
+          }
+        },
+        {
+          "name": "Update Location (REST fallback)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/mobile/tower/location", "host": ["{{baseUrl}}"], "path": ["mobile", "tower", "location"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lat\": 31.5210,\n  \"lng\": 74.3592\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Nearby Towers",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/mobile/tower/nearby?lat=31.5204&lng=74.3587&radius=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["mobile", "tower", "nearby"],
+              "query": [
+                { "key": "lat", "value": "31.5204" },
+                { "key": "lng", "value": "74.3587" },
+                { "key": "radius", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Place Bid on Ride",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/mobile/rides/{{rideId}}/bids", "host": ["{{baseUrl}}"], "path": ["mobile", "rides", "{{rideId}}", "bids"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1500,\n  \"etaMinutes\": 10,\n  \"note\": \"I am 3 km away with flatbed truck\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const d = pm.response.json();",
+                  "if (d.data && d.data.id) {",
+                  "  pm.collectionVariables.set('bidId', String(d.data.id));",
+                  "  console.log('Bid ID saved:', d.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mark Arrived at Pickup",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/mobile/rides/{{rideId}}/arrived", "host": ["{{baseUrl}}"], "path": ["mobile", "rides", "{{rideId}}", "arrived"] }
+          }
+        },
+        {
+          "name": "Start Ride",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/mobile/rides/{{rideId}}/start", "host": ["{{baseUrl}}"], "path": ["mobile", "rides", "{{rideId}}", "start"] }
+          }
+        },
+        {
+          "name": "Complete Ride",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/mobile/rides/{{rideId}}/complete", "host": ["{{baseUrl}}"], "path": ["mobile", "rides", "{{rideId}}", "complete"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Customer",
+      "item": [
+        {
+          "name": "Create Ride Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/mobile/rides", "host": ["{{baseUrl}}"], "path": ["mobile", "rides"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromAddress\": \"Gulberg III, Lahore\",\n  \"fromLat\": 31.5204,\n  \"fromLng\": 74.3587,\n  \"toAddress\": \"DHA Phase 5, Lahore\",\n  \"toLat\": 31.4890,\n  \"toLng\": 74.3748,\n  \"customerNote\": \"Car broke down, engine won't start\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Ride created', () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json();",
+                  "if (d.data && d.data.id) {",
+                  "  pm.collectionVariables.set('rideId', String(d.data.id));",
+                  "  console.log('Ride ID saved:', d.data.id, '| Status:', d.data.status);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Ride Details",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/mobile/rides/{{rideId}}", "host": ["{{baseUrl}}"], "path": ["mobile", "rides", "{{rideId}}"] }
+          }
+        },
+        {
+          "name": "List My Rides",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/mobile/rides?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["mobile", "rides"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "status", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Accept Bid",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/mobile/rides/{{rideId}}/bids/{{bidId}}/accept", "host": ["{{baseUrl}}"], "path": ["mobile", "rides", "{{rideId}}", "bids", "{{bidId}}", "accept"] }
+          }
+        },
+        {
+          "name": "Reject Bid",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/mobile/rides/{{rideId}}/bids/{{bidId}}/reject", "host": ["{{baseUrl}}"], "path": ["mobile", "rides", "{{rideId}}", "bids", "{{bidId}}", "reject"] }
+          }
+        },
+        {
+          "name": "Cancel Ride",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/mobile/rides/{{rideId}}/cancel", "host": ["{{baseUrl}}"], "path": ["mobile", "rides", "{{rideId}}", "cancel"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Changed my mind\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Ride GPS Trail",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/mobile/rides/{{rideId}}/tracking", "host": ["{{baseUrl}}"], "path": ["mobile", "rides", "{{rideId}}", "tracking"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "All Active Rides (Live)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/mobile/rides/admin/active", "host": ["{{baseUrl}}"], "path": ["mobile", "rides", "admin", "active"] }
+          }
+        }
+      ]
+    }
+  ]
+}

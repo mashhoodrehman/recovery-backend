@@ -18,6 +18,7 @@ module.exports = (sequelize, DataTypes) => {
       adminNote: { type: DataTypes.STRING(255), allowNull: true },
       processedById: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
       processedAt: { type: DataTypes.DATE, allowNull: true },
+      stripeTransferId: { type: DataTypes.STRING(128), allowNull: true },
     },
     { tableName: 'withdrawals' }
   );

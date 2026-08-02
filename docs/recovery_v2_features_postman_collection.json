@@ -1,0 +1,249 @@
+{
+  "info": {
+    "name": "Recovery API — v2 Features (Push, Payments, Ratings, Payouts, Calls)",
+    "description": "Covers everything added on top of the base Recovery Mobile API collection: FCM token registration, Stripe payment on ride start, ratings, vendor commission/wallet/Stripe Connect payout, and Agora voice call tokens. Run the base `Recovery Mobile API` collection first to get an `accessToken` (OTP login) — this collection reuses that same variable. See docs/FLUTTER_INTEGRATION_GUIDE.md for the full step-by-step per feature.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://api.recovernow.co.uk/api/v1", "type": "string" },
+    { "key": "accessToken", "value": "", "type": "string", "description": "Customer or tower token from the base OTP collection" },
+    { "key": "adminAccessToken", "value": "", "type": "string", "description": "A staff/admin user's token (email+password login via /auth/login), for withdrawal approve/paid + settings" },
+    { "key": "rideId", "value": "1", "type": "string" },
+    { "key": "paymentIntentId", "value": "", "type": "string" },
+    { "key": "withdrawalId", "value": "1", "type": "string" },
+    { "key": "callToken", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "1. Push notifications (FCM)",
+      "item": [
+        {
+          "name": "Register/refresh FCM token",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/mobile/profile", "host": ["{{baseUrl}}"], "path": ["mobile", "profile"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fcmToken\": \"<device-fcm-token-from-firebase-sdk>\"\n}"
+            },
+            "description": "Call this on login, app start, and whenever Firebase issues a new token (onTokenRefresh). Requires firebase-admin installed + FIREBASE_* env vars set server-side; without them, pushes are logged, not sent."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Chat (offline push — same endpoints as base collection)",
+      "item": [
+        {
+          "name": "Get ride messages",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/mobile/rides/{{rideId}}/messages", "host": ["{{baseUrl}}"], "path": ["mobile", "rides", "{{rideId}}", "messages"] },
+            "description": "No new endpoint — behavior change only: if the recipient has no live socket connection when a chat:send / chat:send_image / this image-upload endpoint fires, a push notification is now sent automatically."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Ride payment (Stripe)",
+      "item": [
+        {
+          "name": "1. Create/reuse PaymentIntent for ride",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/mobile/rides/{{rideId}}/pay", "host": ["{{baseUrl}}"], "path": ["mobile", "rides", "{{rideId}}", "pay"] },
+            "description": "Customer only. Ride must have an accepted bid (fareAmount set). Returns a Stripe `clientSecret` for the Flutter app's Stripe SDK (PaymentSheet/confirmPayment) to complete the charge on-device."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const d = pm.response.json();",
+                  "if (d.data && d.data.paymentIntentId) {",
+                  "  pm.collectionVariables.set('paymentIntentId', d.data.paymentIntentId);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Poll payment status",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/mobile/rides/{{rideId}}/payment", "host": ["{{baseUrl}}"], "path": ["mobile", "rides", "{{rideId}}", "payment"] },
+            "description": "Fallback if the app misses the `ride:payment_confirmed` / `ride:payment_failed` socket event. paymentStatus flips to 'paid' once the webhook below fires."
+          }
+        },
+        {
+          "name": "3. [Reference only] Stripe webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Stripe-Signature", "value": "t=...,v1=... (generated by Stripe, not settable manually)" }
+            ],
+            "url": { "raw": "{{baseUrl}}/payments/stripe/webhook", "host": ["{{baseUrl}}"], "path": ["payments", "stripe", "webhook"] },
+            "body": { "mode": "raw", "raw": "{ \"type\": \"payment_intent.succeeded\", \"data\": { \"object\": { \"id\": \"pi_...\" } } }" },
+            "description": "Cannot be called directly from Postman with a valid signature. Test locally with the Stripe CLI instead:\n\nstripe listen --forward-to localhost:4000/api/v1/payments/stripe/webhook\nstripe trigger payment_intent.succeeded\n\nIn production, configure this exact URL as a webhook endpoint in the Stripe Dashboard and copy the signing secret into STRIPE_WEBHOOK_SECRET."
+          }
+        },
+        {
+          "name": "4. Start ride (blocked until payment confirmed)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/mobile/rides/{{rideId}}/start", "host": ["{{baseUrl}}"], "path": ["mobile", "rides", "{{rideId}}", "start"] },
+            "description": "Tower only. Returns 400 'Customer has not completed payment for this ride yet' if paymentStatus != 'paid'."
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Rating",
+      "item": [
+        {
+          "name": "Rate a completed ride",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/mobile/rides/{{rideId}}/rating", "host": ["{{baseUrl}}"], "path": ["mobile", "rides", "{{rideId}}", "rating"] },
+            "body": { "mode": "raw", "raw": "{\n  \"stars\": 5,\n  \"comment\": \"Fast and professional, highly recommend.\"\n}" },
+            "description": "Customer only, ride must be status=completed, one rating per ride."
+          }
+        },
+        {
+          "name": "Get ride rating",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/mobile/rides/{{rideId}}/rating", "host": ["{{baseUrl}}"], "path": ["mobile", "rides", "{{rideId}}", "rating"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Vendor commission & Stripe Connect payout",
+      "item": [
+        {
+          "name": "Admin — Get settings (commission_percent, min_withdrawal_amount)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/settings", "host": ["{{baseUrl}}"], "path": ["settings"] },
+            "description": "Already implemented — not new. This is the admin panel's own generic settings endpoint (also has a UI at recovery-frontend /admin/settings). Included here for completeness."
+          }
+        },
+        {
+          "name": "Admin — Update commission % / min payout limit",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/settings", "host": ["{{baseUrl}}"], "path": ["settings"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"settings\": [\n    { \"key\": \"commission_percent\", \"value\": 15 },\n    { \"key\": \"min_withdrawal_amount\", \"value\": 50 }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Tower — Start Stripe Connect onboarding",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/mobile/profile/stripe/onboard?returnUrl=myapp://stripe-return&refreshUrl=myapp://stripe-refresh",
+              "host": ["{{baseUrl}}"], "path": ["mobile", "profile", "stripe", "onboard"],
+              "query": [
+                { "key": "returnUrl", "value": "myapp://stripe-return" },
+                { "key": "refreshUrl", "value": "myapp://stripe-refresh" }
+              ]
+            },
+            "description": "Tower only. Open the returned `url` in an in-app webview. Pass your own deep-link returnUrl/refreshUrl query params so the app can catch the redirect instead of landing on the plain HTML fallback page."
+          }
+        },
+        {
+          "name": "Tower — Get Stripe Connect status",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/mobile/profile/stripe/status", "host": ["{{baseUrl}}"], "path": ["mobile", "profile", "stripe", "status"] },
+            "description": "payoutsEnabled flips to true via the account.updated Stripe webhook once onboarding is fully verified."
+          }
+        },
+        {
+          "name": "Tower — Request withdrawal (method=stripe)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/withdrawals", "host": ["{{baseUrl}}"], "path": ["withdrawals"] },
+            "body": { "mode": "raw", "raw": "{\n  \"amount\": 100,\n  \"method\": \"stripe\"\n}" },
+            "description": "Blocked with 400 if amount < settings.min_withdrawal_amount, or if wallet.availableBalance is insufficient."
+          }
+        },
+        {
+          "name": "Admin — Approve withdrawal",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/withdrawals/{{withdrawalId}}/approve", "host": ["{{baseUrl}}"], "path": ["withdrawals", "{{withdrawalId}}", "approve"] }
+          }
+        },
+        {
+          "name": "Admin — Mark paid (fires real Stripe transfer for method=stripe)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminAccessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/withdrawals/{{withdrawalId}}/paid", "host": ["{{baseUrl}}"], "path": ["withdrawals", "{{withdrawalId}}", "paid"] },
+            "description": "This is the point where money actually leaves the platform's Stripe balance to the vendor's connected account. Fails with 400 if the vendor hasn't finished Stripe Connect onboarding (stripePayoutsEnabled=false)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Voice call (Agora)",
+      "item": [
+        {
+          "name": "Get Agora call token",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/mobile/rides/{{rideId}}/call/token", "host": ["{{baseUrl}}"], "path": ["mobile", "rides", "{{rideId}}", "call", "token"] },
+            "description": "Either ride participant, once a tower is assigned (status accepted..in_progress). Returns { appId, channel, token, uid, expiresAt } for the Agora Flutter SDK's engine.joinChannel(). Token expires after 1 hour — refetch if a call runs long. Ringing/accept/reject/end is NOT via this REST call — it's socket events (call:invite/accept/reject/end), see the Flutter integration guide."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const d = pm.response.json();",
+                  "if (d.data && d.data.token) pm.collectionVariables.set('callToken', d.data.token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

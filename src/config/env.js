@@ -54,6 +54,20 @@ const env = {
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
     privateKey: process.env.FIREBASE_PRIVATE_KEY,
   },
+
+  stripe: {
+    secretKey: process.env.STRIPE_SECRET_KEY,
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+  },
+
+  agora: {
+    appId: process.env.AGORA_APP_ID,
+    appCertificate: process.env.AGORA_APP_CERTIFICATE,
+  },
+
+  redis: {
+    url: process.env.REDIS_URL, // e.g. redis://127.0.0.1:6379 — unset = in-memory fallback (single instance only)
+  },
 };
 
 module.exports = env;
