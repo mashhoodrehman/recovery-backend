@@ -317,7 +317,9 @@ searching
 
 ## Token Refresh (mobile)
 
-Access token expires in **15 minutes**.
+Access token expires in **7 days** (refresh token in 30 days) — long-lived by design so the app
+essentially never needs to refresh mid-session. Still implement refresh for the rare case a
+session outlives 7 days, and because it's the only way to invalidate a token early if needed.
 
 ```
 POST /auth/refresh

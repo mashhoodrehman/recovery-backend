@@ -751,7 +751,7 @@ the admin panel, not this app.
 ```json
 { "success": true, "message": "Token refreshed", "data": { "accessToken": "eyJhbGciOi...", "refreshToken": "eyJhbGciOi..." } }
 ```
-> Access token expires in 15 minutes. Re-connect the socket with the new token after refreshing.
+> Access token expires in 7 days (refresh token in 30 days) — long-lived by design so this endpoint is rarely needed in practice. Re-connect the socket with the new token after refreshing, on the rare occasion you do use it.
 
 --------------------------------------------------------------------------------
 
