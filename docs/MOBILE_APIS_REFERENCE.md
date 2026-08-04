@@ -751,7 +751,7 @@ the admin panel, not this app.
 ```json
 { "success": true, "message": "Token refreshed", "data": { "accessToken": "eyJhbGciOi...", "refreshToken": "eyJhbGciOi..." } }
 ```
-> Access token expires in 7 days (refresh token in 30 days) — long-lived by design so this endpoint is rarely needed in practice. Re-connect the socket with the new token after refreshing, on the rare occasion you do use it.
+> Access tokens never expire (no `exp` claim), by explicit request — this endpoint should essentially never be needed. Refresh tokens still expire after 30 days. Security trade-off: a leaked access token is valid forever; the only way to invalidate one is rotating `JWT_ACCESS_SECRET` server-side, which logs out everyone, not just the affected user.
 
 --------------------------------------------------------------------------------
 

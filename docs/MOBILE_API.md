@@ -317,9 +317,15 @@ searching
 
 ## Token Refresh (mobile)
 
-Access token expires in **7 days** (refresh token in 30 days) — long-lived by design so the app
-essentially never needs to refresh mid-session. Still implement refresh for the rare case a
-session outlives 7 days, and because it's the only way to invalidate a token early if needed.
+Access tokens **never expire** — no `exp` claim at all, by explicit request. Refresh tokens still
+expire after 30 days. In practice you should never need to call this, since the access token you
+got at login/OTP-verify stays valid forever. Still implement it for completeness (and because it's
+currently the only way the backend can force a session refresh if that policy ever changes) — just
+don't expect it to fire in normal use.
+
+**Security note:** because access tokens don't expire, there is no automatic recovery from a
+leaked token — it stays valid indefinitely. The only way to invalidate one early is rotating
+`JWT_ACCESS_SECRET` on the server, which logs out every user, not just the affected one.
 
 ```
 POST /auth/refresh
