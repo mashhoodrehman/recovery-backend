@@ -47,7 +47,6 @@ Response:
   "success": true,
   "data": {
     "accessToken": "eyJ...",
-    "refreshToken": "eyJ...",
     "isNewUser": true,
     "user": {
       "id": 5,
@@ -315,25 +314,16 @@ searching
 
 ---
 
-## Token Refresh (mobile)
+## Tokens (mobile)
 
-Access tokens **never expire** — no `exp` claim at all, by explicit request. Refresh tokens still
-expire after 30 days. In practice you should never need to call this, since the access token you
-got at login/OTP-verify stays valid forever. Still implement it for completeness (and because it's
-currently the only way the backend can force a session refresh if that policy ever changes) — just
-don't expect it to fire in normal use.
+There is only **one** token — the access token returned by `/mobile/verify` (or `/auth/login` for
+admin). It **never expires** — no `exp` claim at all, by explicit request — and there is no
+refresh token or refresh endpoint anymore; `/auth/refresh` has been removed. Store the access
+token once and keep using it for every request and every Socket.IO connection indefinitely.
 
-**Security note:** because access tokens don't expire, there is no automatic recovery from a
-leaked token — it stays valid indefinitely. The only way to invalidate one early is rotating
-`JWT_ACCESS_SECRET` on the server, which logs out every user, not just the affected one.
-
-```
-POST /auth/refresh
-Body: { "refreshToken": "eyJ..." }
-```
-Response includes new `accessToken` + `refreshToken`.
-
-> Re-connect Socket.IO with the new token after refresh.
+**Security note:** because the token never expires and there's no blocklist, there is no automatic
+recovery from a leaked token — it stays valid indefinitely. The only way to invalidate one early is
+rotating `JWT_ACCESS_SECRET` on the server, which logs out every user, not just the affected one.
 
 ---
 

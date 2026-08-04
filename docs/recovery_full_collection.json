@@ -8,7 +8,6 @@
     { "key": "baseUrl", "value": "https://api.recovernow.co.uk/api/v1", "type": "string" },
     { "key": "accessToken", "value": "", "type": "string" },
     { "key": "adminToken", "value": "", "type": "string" },
-    { "key": "refreshToken", "value": "", "type": "string" },
     { "key": "phone", "value": "+923001234567", "type": "string" },
     { "key": "otp", "value": "1122", "type": "string" },
     { "key": "resetToken", "value": "", "type": "string" },
@@ -34,14 +33,14 @@
           "name": "1. Login (super admin)",
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
             "const d = pm.response.json().data || {};",
-            "if (d.accessToken) { pm.collectionVariables.set('accessToken', d.accessToken); pm.collectionVariables.set('adminToken', d.accessToken); console.log('Admin token saved'); }",
-            "if (d.refreshToken) pm.collectionVariables.set('refreshToken', d.refreshToken);"
+            "if (d.accessToken) { pm.collectionVariables.set('accessToken', d.accessToken); pm.collectionVariables.set('adminToken', d.accessToken); console.log('Admin token saved'); }"
           ] } }],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "url": "{{baseUrl}}/auth/login",
-            "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@recovery.local\",\n  \"password\": \"Admin@12345\"\n}" }
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@recovery.local\",\n  \"password\": \"Admin@12345\"\n}" },
+            "description": "Only one token exists (accessToken) and it never expires — there is no refresh token/endpoint."
           }
         },
         {
@@ -55,21 +54,7 @@
           }
         },
         {
-          "name": "3. Refresh Token",
-          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-            "const d = pm.response.json().data || {};",
-            "if (d.accessToken) pm.collectionVariables.set('accessToken', d.accessToken);",
-            "if (d.refreshToken) pm.collectionVariables.set('refreshToken', d.refreshToken);"
-          ] } }],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": "{{baseUrl}}/auth/refresh",
-            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" }
-          }
-        },
-        {
-          "name": "4. Get Me",
+          "name": "3. Get Me",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
@@ -77,7 +62,7 @@
           }
         },
         {
-          "name": "5. Forgot Password",
+          "name": "4. Forgot Password",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -87,7 +72,7 @@
           }
         },
         {
-          "name": "6. Reset Password",
+          "name": "5. Reset Password",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -96,7 +81,7 @@
           }
         },
         {
-          "name": "7. Logout",
+          "name": "6. Logout",
           "request": {
             "method": "POST",
             "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
@@ -533,7 +518,7 @@
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
             "pm.test('OTP verified', () => pm.response.to.have.status(200));",
             "const d = pm.response.json();",
-            "if (d.data) { pm.collectionVariables.set('accessToken', d.data.accessToken); pm.collectionVariables.set('refreshToken', d.data.refreshToken); console.log('isNewUser:', d.data.isNewUser); }"
+            "if (d.data) { pm.collectionVariables.set('accessToken', d.data.accessToken); console.log('isNewUser:', d.data.isNewUser); }"
           ] } }],
           "request": {
             "method": "POST",

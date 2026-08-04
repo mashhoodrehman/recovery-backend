@@ -7,7 +7,6 @@
   "variable": [
     { "key": "baseUrl", "value": "https://api.recovernow.co.uk/api/v1", "type": "string" },
     { "key": "accessToken", "value": "", "type": "string" },
-    { "key": "refreshToken", "value": "", "type": "string" },
     { "key": "phone", "value": "+923001234567", "type": "string" },
     { "key": "rideId", "value": "1", "type": "string" },
     { "key": "bidId", "value": "1", "type": "string" }
@@ -63,7 +62,6 @@
                   "const d = pm.response.json();",
                   "if (d.data) {",
                   "  pm.collectionVariables.set('accessToken', d.data.accessToken);",
-                  "  pm.collectionVariables.set('refreshToken', d.data.refreshToken);",
                   "  console.log('isNewUser:', d.data.isNewUser);",
                   "  console.log('Token saved ✓');",
                   "}"
@@ -109,33 +107,6 @@
             "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
             "url": { "raw": "{{baseUrl}}/mobile/profile", "host": ["{{baseUrl}}"], "path": ["mobile", "profile"] }
           }
-        },
-        {
-          "name": "Refresh Token",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{baseUrl}}/auth/refresh", "host": ["{{baseUrl}}"], "path": ["auth", "refresh"] },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "const d = pm.response.json();",
-                  "if (d.data && d.data.accessToken) {",
-                  "  pm.collectionVariables.set('accessToken', d.data.accessToken);",
-                  "  pm.collectionVariables.set('refreshToken', d.data.refreshToken);",
-                  "  console.log('Token refreshed ✓');",
-                  "}"
-                ]
-              }
-            }
-          ]
         }
       ]
     },

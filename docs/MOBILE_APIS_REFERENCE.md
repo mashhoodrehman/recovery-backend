@@ -4,8 +4,9 @@ Every endpoint the Flutter app (customer + tower) calls. Admin-only endpoints ar
 where nested under `/mobile` (e.g. document review, active-rides dashboard) — those belong to
 the admin panel, not this app.
 
-**Base URL:** `https://recovery-api.laggarsay.com/api/v1` (all paths below are relative to this — do not prepend it again)
+**Base URL:** `https://api.recovernow.co.uk/api/v1` (all paths below are relative to this — do not prepend it again)
 **Auth:** unless marked "None", send `Authorization: Bearer <accessToken>`
+**Tokens:** there is only one token. `accessToken` from endpoint 2 (or `/auth/login` for admin) never expires and there is no refresh token/endpoint anymore — get it once, store it, keep using it.
 **Envelope:** every response is `{ "success": bool, "message": string, "data": ..., "meta"?: {...} }`; errors are `{ "success": false, "message": "...", "details": ... }` with a 4xx/5xx status.
 
 --------------------------------------------------------------------------------
@@ -53,7 +54,6 @@ the admin panel, not this app.
   "message": "Success",
   "data": {
     "accessToken": "eyJhbGciOi...",
-    "refreshToken": "eyJhbGciOi...",
     "isNewUser": true,
     "user": {
       "id": 5,
@@ -737,25 +737,7 @@ the admin panel, not this app.
 
 --------------------------------------------------------------------------------
 
-### 33. Refresh Access Token
-**URL:** `/auth/refresh`
-**Method:** `POST`
-**Auth:** None (uses refreshToken in body)
-
-**Body:**
-```json
-{ "refreshToken": "eyJhbGciOi..." }
-```
-
-**Response `200`:**
-```json
-{ "success": true, "message": "Token refreshed", "data": { "accessToken": "eyJhbGciOi...", "refreshToken": "eyJhbGciOi..." } }
-```
-> Access tokens never expire (no `exp` claim), by explicit request — this endpoint should essentially never be needed. Refresh tokens still expire after 30 days. Security trade-off: a leaked access token is valid forever; the only way to invalidate one is rotating `JWT_ACCESS_SECRET` server-side, which logs out everyone, not just the affected user.
-
---------------------------------------------------------------------------------
-
-### 34. Register FCM Push Token (alternative to endpoint 5)
+### 33. Register FCM Push Token (alternative to endpoint 5)
 **URL:** `/notifications/register-token`
 **Method:** `POST`
 **Auth:** Bearer required
