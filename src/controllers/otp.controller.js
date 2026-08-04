@@ -2,7 +2,7 @@ const db = require('../models');
 const asyncHandler = require('../utils/asyncHandler');
 const { ok } = require('../utils/apiResponse');
 const ApiError = require('../utils/ApiError');
-const { signAccessToken, signRefreshToken } = require('../utils/jwt');
+const { signAccessToken } = require('../utils/jwt');
 const bcrypt = require('bcryptjs');
 
 const DEV_OTP = '1122'; // Replace with Twilio send in production
@@ -59,11 +59,9 @@ const verifyOtp = asyncHandler(async (req, res) => {
   await user.update({ isPhoneVerified: true, phoneOtp: null, phoneOtpExpiresAt: null });
 
   const accessToken = signAccessToken({ sub: user.id });
-  const refreshToken = signRefreshToken({ sub: user.id });
 
   return ok(res, {
     accessToken,
-    refreshToken,
     isNewUser: !user.isProfileComplete,
     user: {
       id: user.id,

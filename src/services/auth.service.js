@@ -1,14 +1,7 @@
-const bcrypt = require('bcryptjs');
 const db = require('../models');
 const ApiError = require('../utils/ApiError');
 const { hashPassword, comparePassword } = require('../utils/password');
-const {
-  signAccessToken,
-  signRefreshToken,
-  signResetToken,
-  verifyRefreshToken,
-  verifyResetToken,
-} = require('../utils/jwt');
+const { signAccessToken, signResetToken, verifyResetToken } = require('../utils/jwt');
 const env = require('../config/env');
 const logger = require('../utils/logger');
 const mailer = require('./mailer.service');
@@ -37,10 +30,8 @@ async function loadUserWithRoles(userId) {
 async function issueTokens(user) {
   const payload = { sub: user.id, email: user.email };
   const accessToken = signAccessToken(payload);
-  const refreshToken = signRefreshToken(payload);
-  const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
-  await db.User.update({ refreshTokenHash, lastLoginAt: new Date() }, { where: { id: user.id } });
-  return { accessToken, refreshToken };
+  await db.User.update({ lastLoginAt: new Date() }, { where: { id: user.id } });
+  return { accessToken };
 }
 
 async function signup({ firstName, lastName, email, phone, password, role = 'customer' }) {
@@ -79,27 +70,12 @@ async function login({ email, password }) {
   return { user: publicUser(full), ...tokens };
 }
 
-async function refresh({ refreshToken }) {
-  let payload;
-  try {
-    payload = verifyRefreshToken(refreshToken);
-  } catch {
-    throw ApiError.unauthorized('Invalid or expired refresh token');
-  }
-  const user = await db.User.scope('withSecret').findByPk(payload.sub);
-  if (!user || !user.isActive || !user.refreshTokenHash) {
-    throw ApiError.unauthorized('Refresh token rejected');
-  }
-  const match = await bcrypt.compare(refreshToken, user.refreshTokenHash);
-  if (!match) throw ApiError.unauthorized('Refresh token rejected');
-
-  const full = await loadUserWithRoles(user.id);
-  const tokens = await issueTokens(full);
-  return { user: publicUser(full), ...tokens };
-}
-
-async function logout(userId) {
-  await db.User.update({ refreshTokenHash: null }, { where: { id: userId } });
+// Logout has nothing left to do server-side — access tokens carry no expiry and there's no
+// blocklist, so there's no way to invalidate an issued one short of rotating JWT_ACCESS_SECRET
+// (which logs out everyone). This just gives the client a call to make; token disposal happens
+// client-side by discarding it from storage.
+async function logout(_userId) {
+  return { loggedOut: true };
 }
 
 async function forgotPassword({ email }) {
@@ -130,17 +106,13 @@ async function resetPassword({ token, password }) {
   if (!user) throw ApiError.notFound('User not found');
 
   const hashed = await hashPassword(password);
-  await db.User.update(
-    { password: hashed, refreshTokenHash: null },
-    { where: { id: user.id } }
-  );
+  await db.User.update({ password: hashed }, { where: { id: user.id } });
   return { reset: true };
 }
 
 module.exports = {
   signup,
   login,
-  refresh,
   logout,
   forgotPassword,
   resetPassword,

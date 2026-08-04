@@ -21,12 +21,6 @@ const login = {
   }),
 };
 
-const refresh = {
-  body: Joi.object({
-    refreshToken: Joi.string().required(),
-  }),
-};
-
 const forgotPassword = {
   body: Joi.object({
     email: email.required(),
@@ -40,4 +34,4 @@ const resetPassword = {
   }),
 };
 
-module.exports = { signup, login, refresh, forgotPassword, resetPassword };
+module.exports = { signup, login, forgotPassword, resetPassword };

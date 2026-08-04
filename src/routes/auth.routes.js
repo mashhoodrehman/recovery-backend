@@ -6,7 +6,6 @@ const v = require('../validators/auth.validator');
 
 router.post('/signup', validate(v.signup), ctrl.signup);
 router.post('/login', validate(v.login), ctrl.login);
-router.post('/refresh', validate(v.refresh), ctrl.refresh);
 router.post('/forgot-password', validate(v.forgotPassword), ctrl.forgotPassword);
 router.post('/reset-password', validate(v.resetPassword), ctrl.resetPassword);
 
