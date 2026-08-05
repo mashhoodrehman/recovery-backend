@@ -43,6 +43,10 @@ app.use(
     max: env.rateLimit.max,
     standardHeaders: true,
     legacyHeaders: false,
+    // Default handler sends a bare string via res.send(), with no `success` field and the
+    // wrong content-type — breaks any client expecting the standard JSON envelope. Passing an
+    // object here makes res.send() JSON-serialize it like every other response in the app.
+    message: { success: false, message: 'Too many requests, please try again later.', details: null },
   })
 );
 

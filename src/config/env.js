@@ -32,7 +32,9 @@ const env = {
 
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000,
-    max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 200,
+    // 200/15min was too tight for a real-time app (tower REST location fallback alone can hit
+    // 180-300 req/15min at a 3-5s interval from one device) — raised to give real usage headroom.
+    max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 1000,
   },
 
   mail: {
