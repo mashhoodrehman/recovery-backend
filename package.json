@@ -4,8 +4,8 @@
   "description": "Recovery system backend - Node.js MVC with Sequelize + MySQL, RBAC (Spatie-style), JWT auth, recovery requests & bidding",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
+    "start": "node init && node src/server.js",
+    "dev": "node init && nodemon src/server.js",
     "db:migrate": "sequelize-cli db:migrate",
     "db:migrate:undo": "sequelize-cli db:migrate:undo",
     "db:seed": "sequelize-cli db:seed:all",
